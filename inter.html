@@ -58,6 +58,8 @@
 
       .wave:nth-child(2) {
         fill: #cdcdcd;
+        animation: ripple 8s linear infinite;
+        animation-direction: reverse;
       }
 
       @keyframes ripple {
@@ -314,8 +316,7 @@
 
           paintPulses = time => waves.forEach((path, layer) => {
             const animation = path.getAnimations()[0];
-            const progress = animation ? Number(animation.currentTime) /
-              animation.effect.getTiming().duration : 0;
+            const progress = animation?.effect.getComputedTiming().progress ?? 0;
             const contour = makePath(layer, layer * 0.8 - progress * Math.PI * 2, time);
             path.style.setProperty('d', `path("${contour}")`, 'important');
           });
