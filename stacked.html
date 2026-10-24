@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta name="author" content="Robin Bühler">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS layered border waves</title>
+    <style>
+      body {
+        margin: 0 auto;
+        width: min(1000px, calc(100% - 96px));
+      }
+
+      .border-waves {
+        z-index: 3;
+        position: relative;
+        border-radius: 999px;
+        corner-shape: squircle;
+        padding: 2em;
+        margin-block: 40px;
+
+        &::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          corner-shape: inherit;
+          background-color: #f0f0f0;
+          z-index: -1;
+        }
+      }
+
+      .border-waves>svg {
+        z-index: -2;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .wave {
+        fill: none;
+        animation: ripple 12s linear infinite;
+      }
+
+      .wave:nth-child(1) {
+        fill: #e4e4e4;
+      }
+
+      .wave:nth-child(2) {
+        fill: #cdcdcd;
+      }
+
+      @keyframes ripple {
+
+        0%,
+        100% {
+          d: var(--wave-0);
+        }
+
+        6.25% {
+          d: var(--wave-1);
+        }
+
+        12.5% {
+          d: var(--wave-2);
+        }
+
+        18.75% {
+          d: var(--wave-3);
+        }
+
+        25% {
+          d: var(--wave-4);
+        }
+
+        31.25% {
+          d: var(--wave-5);
+        }
+
+        37.5% {
+          d: var(--wave-6);
+        }
+
+        43.75% {
+          d: var(--wave-7);
+        }
+
+        50% {
+          d: var(--wave-8);
+        }
+
+        56.25% {
+          d: var(--wave-9);
+        }
+
+        62.5% {
+          d: var(--wave-10);
+        }
+
+        68.75% {
+          d: var(--wave-11);
+        }
+
+        75% {
+          d: var(--wave-12);
+        }
+
+        81.25% {
+          d: var(--wave-13);
+        }
+
+        87.5% {
+          d: var(--wave-14);
+        }
+
+        93.75% {
+          d: var(--wave-15);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .wave {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>CSS Layered Border Waves</h1>
+    <p>A doodle of CSS layered border waves.</p>
+
+    <h2>Stacked example</h2>
+    <div class="border-waves">
+      Stacked example of border waves.
+    </div>
+
+    <ul>
+      <li><a href="./index.html">Basic example</a></li>
+      <li><a href="./stacked.html">Stacked example</a></li>
+      <li><a href="./inter.html">Interactive example</a></li>
+    </ul>
+    <script>
+      const svgNamespace = 'http://www.w3.org/2000/svg';
+
+      document.querySelectorAll('.border-waves').forEach(element => {
+        const svg = document.createElementNS(svgNamespace, 'svg');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        const waves = Array.from({ length: 2 }, () => {
+          const path = document.createElementNS(svgNamespace, 'path');
+          path.classList.add('wave');
+          svg.append(path);
+          return path;
+        });
+        element.append(svg);
+
+        const profiles = waves.map(() => ({
+          phase: Math.random() * Math.PI * 2,
+          amplitude: 4.3 + Math.random() * 0.3,
+          cycleOffset: Math.floor(Math.random() * 3) - 1,
+          fluctuations: Array.from({ length: 3 }, (_, index) => ({
+            frequency: index + 1,
+            amplitude: 0.12 + Math.random() * 0.08,
+            phase: Math.random() * Math.PI * 2
+          }))
+        }));
+
+        const redraw = () => {
+          const { width, height } = element.getBoundingClientRect();
+          if (!width || !height) return;
+          svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+          const radius = Math.min(width, height) / 2;
+          const exponent = CSS.supports('corner-shape', 'squircle') ? 0.5 : 1;
+          const corners = [
+            [width - radius, radius, -Math.PI / 2],
+            [width - radius, height - radius, 0],
+            [radius, height - radius, Math.PI / 2],
+            [radius, radius, Math.PI]
+          ];
+          const outline = corners.flatMap(([centerX, centerY, start]) =>
+            Array.from({ length: 65 }, (_, index) => {
+              const angle = start + index / 64 * Math.PI / 2;
+              const cosine = Math.cos(angle);
+              const sine = Math.sin(angle);
+              return {
+                x: centerX + radius * Math.sign(cosine) * Math.abs(cosine) ** exponent,
+                y: centerY + radius * Math.sign(sine) * Math.abs(sine) ** exponent
+              };
+            })
+          );
+          outline.push(outline[0]);
+          const distances = [0];
+          for (let index = 1; index < outline.length; index++) {
+            distances.push(distances[index - 1] + Math.hypot(
+              outline[index].x - outline[index - 1].x,
+              outline[index].y - outline[index - 1].y
+            ));
+          }
+          const perimeter = distances[distances.length - 1];
+          const count = Math.ceil(perimeter / 4);
+          let segment = 1;
+          const samples = Array.from({ length: count }, (_, index) => {
+            const distance = index / count * perimeter;
+            while (distances[segment] < distance) segment++;
+            const start = outline[segment - 1];
+            const end = outline[segment];
+            const fraction = (distance - distances[segment - 1]) /
+              (distances[segment] - distances[segment - 1]);
+            return {
+              x: start.x + (end.x - start.x) * fraction,
+              y: start.y + (end.y - start.y) * fraction
+            };
+          });
+          const cycles = Math.max(4, Math.round(perimeter / 100));
+          const makePath = (layer, phase) => samples.map((point, index) => {
+            const previous = samples[(index + count - 1) % count];
+            const next = samples[(index + 1) % count];
+            const tangentX = next.x - previous.x;
+            const tangentY = next.y - previous.y;
+            const length = Math.hypot(tangentX, tangentY);
+            const profile = profiles[layer];
+            const angle = index / count * Math.PI * 2;
+            const envelope = 0.8 + 0.2 * Math.sin(3 * angle + profile.phase);
+            const fluctuations = profile.fluctuations.reduce((total, fluctuation) =>
+              total + fluctuation.amplitude * Math.sin(
+                angle * fluctuation.frequency + fluctuation.phase +
+                phase
+              ), 0);
+            const offset = 5 + layer +
+              profile.amplitude * envelope * Math.sin(
+                angle * (cycles + profile.cycleOffset) + profile.phase + phase +
+                0.6 * Math.sin(2 * angle + profile.phase)
+              ) + fluctuations;
+            const positionX = point.x + tangentY / length * offset;
+            const positionY = point.y - tangentX / length * offset;
+            return `${index === 0 ? 'M' : 'L'}${positionX.toFixed(2)} ${positionY.toFixed(2)}`;
+          }).join(' ') + ' Z';
+
+          waves.forEach((path, layer) => {
+            const start = makePath(layer, layer * 0.8);
+            path.setAttribute('d', start);
+            for (let frame = 0; frame < 16; frame++) {
+              const contour = makePath(layer, layer * 0.8 - frame / 16 * Math.PI * 2);
+              path.style.setProperty(`--wave-${frame}`, `path("${contour}")`);
+            }
+          });
+        };
+
+        new ResizeObserver(redraw).observe(element);
+      });
+    </script>
+  </body>
+
+</html>
